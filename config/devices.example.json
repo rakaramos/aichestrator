@@ -1,0 +1,48 @@
+{
+  "ios": [
+    {
+      "name": "iPhone XS",
+      "udid": "<udid from xcrun devicectl list devices>",
+      "os": "18.7",
+      "wda_port": 8101,
+      "screen": [
+        375,
+        812
+      ],
+      "notes": "Has a passcode since 3 Nov: no automated lock-screen work"
+    },
+    {
+      "name": "iPhone 15",
+      "udid": "<udid from xcrun devicectl list devices>",
+      "os": "27.2",
+      "wda_port": 8102,
+      "screen": [
+        393,
+        852
+      ],
+      "notes": "Dynamic Island, StandBy, passcode on"
+    },
+    {
+      "name": "iPhone 11",
+      "udid": "<udid from xcrun devicectl list devices>",
+      "os": "27.2",
+      "wda_port": 8103,
+      "screen": [
+        414,
+        896
+      ],
+      "notes": "No passcode: first choice for unattended runs"
+    }
+  ],
+  "android": [
+    {
+      "name": "Samsung SM-S731B",
+      "serial": "<serial from adb devices>",
+      "screen_px": [
+        1080,
+        2340
+      ],
+      "notes": "Stay awake on while charging"
+    }
+  ]
+}

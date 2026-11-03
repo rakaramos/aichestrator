@@ -1,0 +1,52 @@
+[
+  {
+    "source": "trello",
+    "card": "Xy8O2mVD",
+    "requester": "Sami",
+    "asked_at": "2026-11-03T18:50Z",
+    "ask": "Check night-shelf #111 at 14ce3fc on a staging build: no Lock Screen player while a Keeper line or music plays; line/music come back on unlock; silent switch still plays sound",
+    "status": "done",
+    "next_step": "closed: pass posted 3 Nov",
+    "blocked_on": null
+  },
+  {
+    "source": "trello",
+    "card": "Xy8O2mVD",
+    "requester": "Sami",
+    "asked_at": "2026-11-03T18:22Z",
+    "ask": "Full card run + App Review screenshots on Midnight Shelf 2.0 (20003) once in TestFlight",
+    "status": "waiting",
+    "next_step": "wait for Sami's TestFlight post",
+    "blocked_on": "Sami"
+  },
+  {
+    "source": "slack",
+    "thread": "C0CEF46BJG6/1793723765.425549",
+    "requester": "Wojtek",
+    "asked_at": "2026-11-03T16:30Z",
+    "ask": "voice-to-voice-bot#30 calls on staging",
+    "status": "waiting",
+    "next_step": "rerun calls after the interruption fix",
+    "blocked_on": "Wojtek/Rafael fix"
+  },
+  {
+    "source": "trello",
+    "card": "7TRAnLfO",
+    "requester": "Sami",
+    "asked_at": "2026-11-01T20:04Z",
+    "ask": "Mokuso 2.5 checks; night words + Mira opening need a real-time recheck",
+    "status": "in_progress",
+    "next_step": "real-time night recheck running on iPhone 11 (XS locked); then post to Sami",
+    "blocked_on": null
+  },
+  {
+    "source": "trello",
+    "card": "zxTihv9h",
+    "requester": "Sami",
+    "asked_at": "2026-11-02T23:12Z",
+    "ask": "Cavale overnight word widgets, iPhone + Samsung",
+    "status": "scheduled",
+    "next_step": "morning check 7:07 on 4 Nov",
+    "blocked_on": null
+  }
+]
