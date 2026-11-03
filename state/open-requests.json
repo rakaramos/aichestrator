@@ -35,8 +35,8 @@
   "requester": "Sami",
   "asked_at": "2026-11-01T20:04Z",
   "ask": "Mokuso 2.5 checks; night words + Mira opening need a real-time recheck",
-  "status": "in_progress",
-  "next_step": "real-time night recheck running on iPhone 11 (XS locked); then post to Sami",
+  "status": "done",
+  "next_step": "closed: real-time recheck posted 3 Nov (night shield words bug confirmed, Mira opening passes)",
   "blocked_on": null
  },
  {
