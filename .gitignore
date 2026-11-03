@@ -2,7 +2,6 @@
 ev/
 *.png
 *.ipa
-state/inbox.jsonl
-state/cursor.json
 .DS_Store
 config/devices.local.json
+state/

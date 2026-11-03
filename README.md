@@ -10,7 +10,7 @@ Rafael's orchestrator agent. It watches Trello, Slack and GitHub, does the test 
 | `rules/` | Working rules: open requests, Slack status reactions, device automation |
 | `config/watch.json` | What to watch: Slack channel IDs, GitHub orgs, the owner |
 | `config/devices.local.json` (copy of `config/devices.example.json`, not committed) | Test phones: UDIDs, WebDriverAgent ports, screen sizes |
-| `state/open-requests.json` | Ledger of open requests (who asked, what, the next step, blocked on whom) |
+| `state/` (not tracked) | Local runtime state: the open-request ledger `state/open-requests.json`, and later the poller's cursor and inbox. Created on first run. |
 | `scripts/ios/` | WebDriverAgent client and helpers (tap and dump, cover-sheet screenshot, chat input) |
 | `scripts/android/` | adb helpers (UI dump, app path after a push tap, close like a person) |
 | `scripts/web/` | Chrome DevTools Protocol helpers for app web views (evaluate, capture bearer, Firebase token from heap) |
@@ -19,6 +19,10 @@ Rafael's orchestrator agent. It watches Trello, Slack and GitHub, does the test 
 ## Running a tick
 
 In a Claude Code session in this repo, run the prompt in `prompts/tick.md` by hand or on a timer (`/loop 30m`). The rules in `rules/` explain how to handle each item.
+
+## State is local
+
+The repo holds only code, prompts, rules and config. Runtime state (`state/`) stays on the machine and is git-ignored. If `state/open-requests.json` is missing, the tick starts it as an empty array `[]`.
 
 ## Secrets
 
