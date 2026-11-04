@@ -1,6 +1,6 @@
 # Orchestrator tick
 
-Run this prompt on every tick (today: a session timer at :17 and :47; later: the poller in `docs/poller.md`).
+Run this prompt on every tick (every 10 minutes: today a session timer, later: the poller in `docs/poller.md`).
 
 1. **Load state.** Read `state/open-requests.json` (local and git-ignored; start it as `[]` if missing) and the rules in `rules/`.
 2. **Trello.** Fetch the notifications of the signed-in member (`GET /1/members/me/notifications`). They cover every board, so no board list is needed. Then re-read the last 3 comments on every Trello card in the ledger. Add each new ask to the ledger.

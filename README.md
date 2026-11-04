@@ -18,7 +18,7 @@ Rafael's orchestrator agent. It watches Trello, Slack and GitHub, does the test 
 
 ## Running a tick
 
-In a Claude Code session in this repo, run the prompt in `prompts/tick.md` by hand or on a timer (`/loop 30m`). The rules in `rules/` explain how to handle each item.
+In a Claude Code session in this repo, run the prompt in `prompts/tick.md` by hand or on a timer every 10 minutes (`/loop 10m`). The rules in `rules/` explain how to handle each item.
 
 ## State is local
 
