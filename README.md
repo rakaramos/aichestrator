@@ -11,8 +11,8 @@ Rafael's orchestrator agent. It watches Trello, Slack and GitHub, does the test 
 | `config/watch.json` | What to watch: Slack channel IDs, GitHub orgs, the owner |
 | `config/devices.local.json` (copy of `config/devices.example.json`, not committed) | Test phones: UDIDs, WebDriverAgent ports, screen sizes |
 | `state/` (not tracked) | Local runtime state: the open-request ledger `state/open-requests.json`, and later the poller's cursor and inbox. Created on first run. |
-| `scripts/ios/` | WebDriverAgent client and helpers (tap and dump, cover-sheet screenshot, chat input) |
-| `scripts/android/` | adb helpers (UI dump, app path after a push tap, close like a person) |
+| `scripts/ios/` | WebDriverAgent client and helpers (tap and dump, cover-sheet screenshot, type and send) |
+| `scripts/android/` | adb helpers (UI dump, WebView location after a push tap, close an app like a person) |
 | `scripts/web/` | Chrome DevTools Protocol helpers for app web views (evaluate, capture bearer, Firebase token from heap) |
 | `docs/poller.md` | Plan for an always-on poller that does not depend on one Claude session |
 

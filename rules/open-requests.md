@@ -1,7 +1,7 @@
 
 A request read once is not handled. The orchestrator keeps a ledger of open requests and works each one until the requester has an answer.
 
-**Why:** on 3 Nov a Sami comment (Midnight Shelf #111 at 14ce3fc) was read and the build installed, but the checks waited on Rafael, nothing was posted to Sami, and later ticks only looked at newer notifications, so it sat for an hour. Rafael asked to fix this.
+**Why:** on 3 Nov a test request was read and the build installed, but the checks waited on Rafael, nothing was posted to Sami, and later ticks only looked at newer notifications, so it sat for an hour. Rafael asked to fix this.
 
 **How to apply:**
 - Ledger file: `state/open-requests.json`, local and git-ignored (array of {source, card/thread, requester, asked_at, ask, status, next_step, blocked_on}).
@@ -9,4 +9,4 @@ A request read once is not handled. The orchestrator keeps a ledger of open requ
 - Prefer automating device steps (use a phone without a passcode, background the app instead of locking, read app state through the web inspector) before declaring "needs Rafael".
 - If an item truly needs Rafael, acknowledge to the requester (what is ready, what waits) and tell Rafael in plain words at the top of the tick output; repeat every tick until done.
 - Related: [[orchestrator-watch-list]], [[slack-status-reactions]]
-- A closed item does not close its thread. Keep reading recent threads in the watched channels for new asks (3 Nov: a Cavale check asked inside the closed #262 thread was missed in Slack, though it was handled on Trello).
+- A closed item does not close its thread. Keep reading recent threads in the watched channels for new asks (3 Nov: a check asked inside a closed thread was missed in Slack, though it was handled on Trello).

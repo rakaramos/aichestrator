@@ -16,17 +16,22 @@ What works on the test phones, and what needs a person. Read this before you say
 ## iPhone, web views
 
 - Capacitor apps with an inspectable web view: `pymobiledevice3 webinspector js-shell --bundle-id <id>`.
-- Some staging builds turn inspection off (Midnight Shelf). Then use screenshots only.
+- Some staging builds turn inspection off. Then use screenshots only.
 
 ## Android (adb)
 
 - `scripts/android/ui-dump.sh [pattern]` prints the text and tap points on screen.
 - The WebView debugger is at `adb forward tcp:9333 localabstract:webview_devtools_remote_<pid>`. Then use `scripts/web/cdp-eval.mjs`.
 - To get the Firebase ID token for a staging API call, read it from the WebView heap with `scripts/web/cdp-heap-firebase-token.mjs`. Keep the token in a file with mode 600 and never print it.
-- A force-stopped app gets no push. To close an app as a person does, swipe it out of Recents (`scripts/android/cavale-close.sh`).
+- A force-stopped app gets no push. To close an app as a person does, swipe it out of Recents (`scripts/android/close-app.sh <package>`).
 
 ## Always a person
 
 - Entering a device passcode, unlocking with Face ID, and pressing the side button.
 - Listening to sound, flipping the silent switch, and speaking in a voice call.
 - Changing the device clock or security settings.
+
+## No app-specific code
+
+- Scripts in this repo work for any app. Take the app's package or bundle ID, labels and coordinates as arguments or environment variables.
+- Never put an app's name, bundle ID, screen labels or flow in a script, rule or prompt. Keep app-specific steps in the session's scratch folder, and delete them when the request is done.
