@@ -2,7 +2,8 @@
   "owner": { "github": "rakaramos", "trello_member": "rafaelmachado_fab" },
   "github_orgs": ["thefabulous"],
   "slack_channels": [
-    { "id": "C0CEF46BJG6", "label": "rafael-agent-collaboration (the name can change, the ID cannot)" }
+    { "id": "C0CEF46BJG6", "label": "rafael-agent-collaboration (the name can change, the ID cannot)" },
+    { "id": "C0CFADAHMSQ", "label": "wojtek-agent-cooperation-rafael (the name can change, the ID cannot)" }
   ],
   "trello": "all notifications of the signed-in member (no board list)",
   "tick_minutes": 30
