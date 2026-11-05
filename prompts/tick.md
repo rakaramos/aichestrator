@@ -11,7 +11,7 @@ Run this prompt on every tick (every 10 minutes: today a session timer, later: t
    - Read the reviews, review comments and checks of **every open PR of the owner on each tick**, not only of PRs new since the last tick. A PR added to the ledger a minute after it opened gets its bot reviews later.
    - A PR that another of the owner's sessions opened belongs to that session. Tell the owner what the reviews ask, and ask where to fix it, before you change it.
    - After long interactive work, run a tick before you end the turn.
-5. **Work every open ledger item now.** Do its next step. Automate device work first (see `rules/device-automation.md`). Close an item only after the reply with evidence is posted, and set the reactions on the original message (`rules/slack-status-reactions.md`).
+5. **Work every open ledger item now.** Do its next step. Automate device work first (see `rules/device-automation.md`). Close an item only after the reply with evidence is posted, and set the reactions on the original message (`rules/slack-status-reactions.md`). Every Slack post follows `rules/slack-message-format.md`: a headline of about 5 words in the channel, the details in its thread.
 6. **Blocked on the owner?** Tell the requester once what is ready and what waits. List the item at the top of every tick output until it is done.
 7. **Save** `state/open-requests.json` after each change. It is local state: never commit it.
 8. **Skip** work that an active Conductor session owns. Read `/Volumes/HD/conductor/workspaces/*` and its transcripts to see that.

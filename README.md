@@ -7,7 +7,7 @@ Rafael's orchestrator agent. It watches Trello, Slack and GitHub, does the test 
 | Path | What |
 |---|---|
 | `prompts/tick.md` | The prompt for each tick |
-| `rules/` | Working rules: open requests, Slack status reactions, device automation |
+| `rules/` | Working rules: open requests, Slack status reactions, Slack message format, device automation |
 | `config/watch.json` | What to watch: Slack channel IDs, GitHub orgs, the owner |
 | `config/devices.local.json` (copy of `config/devices.example.json`, not committed) | Test phones: UDIDs, WebDriverAgent ports, screen sizes |
 | `state/` (not tracked) | Local runtime state: the open-request ledger `state/open-requests.json`, and later the poller's cursor and inbox. Created on first run. |
