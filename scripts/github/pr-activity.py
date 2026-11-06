@@ -62,7 +62,8 @@ def main():
             # Only failures that finished after `since`, so an old red PR is reported once, not on every tick.
             failed = sorted({r["name"] for r in runs
                              if r.get("conclusion") in ("failure", "timed_out") and (r.get("completed_at") or "") > since})
-            statuses = gh(f"repos/{repo}/commits/{head}/status").get("statuses", [])
+            statuses = [x for page in gh("--paginate", "--slurp", f"repos/{repo}/commits/{head}/status?per_page=100")
+                        for x in page.get("statuses", [])]
             failed += sorted({s["context"] for s in statuses if s["state"] in ("failure", "error") and s["updated_at"] > since})
             if failed:
                 print(f"CI-FAIL {ref} {head[:8]} {', '.join(failed)}")
