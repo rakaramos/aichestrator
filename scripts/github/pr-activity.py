@@ -11,9 +11,24 @@ import json, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+# Bot comments that only report state (a summary, preview controls, review bookkeeping). Anything else from a bot is news.
+STATUS_MARKERS = (
+    "<!-- forge:preview-controls",
+    "<!-- codefox-request:",
+    "<!-- codefox-state:",
+    "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->",
+)
+
+
 def gh(*args):
     out = subprocess.run(["gh", "api", *args], capture_output=True, text=True, check=True).stdout
     return json.loads(out) if out.strip() else []
+
+
+def gh_all(path):
+    """Every page of a list endpoint."""
+    pages = gh("--paginate", "--slurp", path)
+    return [item for page in pages for item in page]
 
 
 def main():
@@ -22,27 +37,28 @@ def main():
     owner = cfg["owner"]["github"]
     for org in cfg["github_orgs"]:
         q = f"org:{org} is:pr is:open author:{owner}"
-        prs = gh("-X", "GET", "search/issues", "-f", f"q={q}", "-f", "per_page=100")["items"]
+        pages = gh("--paginate", "--slurp", "-X", "GET", "search/issues", "-f", f"q={q}", "-f", "per_page=100")
+        prs = [item for page in pages for item in page["items"]]
         for pr in prs:
             repo = pr["repository_url"].split("/repos/")[1]
             n = pr["number"]
             ref = f"{repo.split('/')[1]}#{n}"
-            for r in gh(f"repos/{repo}/pulls/{n}/reviews?per_page=100"):
+            for r in gh_all(f"repos/{repo}/pulls/{n}/reviews?per_page=100"):
                 if r["user"]["login"] != owner and (r.get("submitted_at") or "") > since:
                     print(f"REVIEW  {ref} {r['user']['login']} {r['state']} {r['submitted_at']}")
-            for c in gh(f"repos/{repo}/pulls/{n}/comments?per_page=100"):
+            for c in gh_all(f"repos/{repo}/pulls/{n}/comments?per_page=100"):
                 if c["user"]["login"] != owner and c["created_at"] > since:
                     body = " ".join(c["body"].split())[:120]
                     print(f"THREAD  {ref} {c['user']['login']} {c['path']}:{c.get('line')} {body}")
-            for c in gh(f"repos/{repo}/issues/{n}/comments?per_page=100"):
-                # Bot status comments (summaries, preview controls, review state) carry no ask.
-                if c["user"]["login"].endswith("[bot]") and c["body"].lstrip().startswith("<!--"):
+            for c in gh_all(f"repos/{repo}/issues/{n}/comments?per_page=100"):
+                if c["user"]["login"].endswith("[bot]") and any(m in c["body"] for m in STATUS_MARKERS):
                     continue
                 if c["user"]["login"] != owner and c["created_at"] > since:
                     body = " ".join(c["body"].split())[:120]
                     print(f"COMMENT {ref} {c['user']['login']} {body}")
             head = gh(f"repos/{repo}/pulls/{n}")["head"]["sha"]
-            runs = gh(f"repos/{repo}/commits/{head}/check-runs?per_page=100").get("check_runs", [])
+            runs = [r for page in gh("--paginate", "--slurp", f"repos/{repo}/commits/{head}/check-runs?per_page=100")
+                    for r in page.get("check_runs", [])]
             # Only failures that finished after `since`, so an old red PR is reported once, not on every tick.
             failed = sorted({r["name"] for r in runs
                              if r.get("conclusion") in ("failure", "timed_out") and (r.get("completed_at") or "") > since})
