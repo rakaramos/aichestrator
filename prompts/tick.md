@@ -9,7 +9,10 @@ Run this prompt on every tick (every 10 minutes: today a session timer, later: t
 3. **Slack.** Read new messages in the watched channels (`config/watch.json`, by channel ID, never by name). `conversations.history` returns only top-level messages, so also read the replies of **every thread in those channels with activity in the last 48 hours** (`latest_reply` newer than the last tick), including threads closed in the ledger: a new ask can come inside an old thread.
 4. **GitHub.** List the open PRs of the owner in the watched orgs. For new review comments or CI failures, fix them: review the change with Codex before the push, merge the base branch in instead of a rebase, and never force-push.
    - Read the reviews, review comments and checks of **every open PR of the owner on each tick**, not only of PRs new since the last tick. A PR added to the ledger a minute after it opened gets its bot reviews later.
-   - Do not stop to ask before you babysit a PR. Address the review comments, fix CI, push, and reply on the threads, then report what you did. Ask the owner only before a merge, an approval or a production deploy.
+   - Do not stop to ask before you babysit a PR. Address the review comments, fix CI, push, and reply on the threads, then report what you did.
+   - **Merge the owner's PR when it is ready.** Ready means: GitHub reports it mergeable (`mergeStateStatus` is `CLEAN`), every required check passes, no review asks for changes on the head commit, and no thread is unresolved. Merge with the repo's default method, then report the merge. When a stale bot review blocks the merge although its finding is fixed, ask the bot to re-review the head commit, or resolve the thread with a reply that names the fix.
+   - Merge stacked PRs in their stated order. Run manual checks (for example, a device test) on the merged build.
+   - Ask the owner only before an approval of someone else's PR or a production deploy.
    - A PR that an **active** session of the owner still works on belongs to that session: leave it. When that session is idle or gone, babysit the PR here.
    - **Review requests:** when the owner is a requested reviewer, review the change and post the findings as review comments without asking first. Approve only with the owner's OK.
    - After long interactive work, run a tick before you end the turn.
