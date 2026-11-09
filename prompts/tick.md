@@ -21,6 +21,8 @@ Run this prompt on every tick (every 10 minutes: today a session timer, later: t
      - Re-review on each new head the author pushes, and approve once the findings are fixed.
    - After long interactive work, run a tick before you end the turn.
 5. **Work every open ledger item now.** Do its next step. Automate device work first (see `rules/device-automation.md`). Close an item only after the reply with evidence is posted, and set the reactions on the original message (`rules/slack-status-reactions.md`). Every Slack post follows `rules/slack-message-format.md`: a headline of about 5 words in the channel, the details in its thread.
+   - **Done items reply on their own.** When an item from a watched channel is done (the evidence exists: a merged PR, a passing test run, a commit, a published page), post the result reply in the request's thread at once, set `white_check_mark`, and close the item. The owner gave standing approval for these completion replies; do not wait for an OK. This covers results that a detached session or loop sends back to this session.
+   - **Still ask first** for anything that is not a completion reply: a new top-level ask to a person, a reply that commits the owner to new work, a production deploy or release, and any post outside the watched channels. Never post in a DM.
 6. **Blocked on the owner?** Tell the requester once what is ready and what waits. List the item at the top of every tick output until it is done.
 7. **Save** `state/open-requests.json` after each change. It is local state: never commit it.
 8. **Skip** work that an active Conductor session owns. Read `/Volumes/HD/conductor/workspaces/*` and its transcripts to see that.
