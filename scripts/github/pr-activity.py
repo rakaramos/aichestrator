@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""List new reviews, review comments and PR comments on every open PR of the owner since a time.
+"""List new reviews, review comments and PR comments on every open PR of the owner since a time,
+and every open PR of others that asks for the owner's review or mentions the owner.
 
 Usage: pr-activity.py <since ISO-8601, e.g. 2026-11-06T12:00:00Z>
 Reads the owner and orgs from config/watch.json. Needs `gh` signed in.
 Prints one line per new item from someone other than the owner, and one line per PR whose checks failed since then.
+Prints REVIEW-REQ for every open PR where the owner is a requested reviewer, on every run until the owner reviews it,
+and MENTION for every open PR of others that mentions the owner and changed since then.
 Prints nothing when there is no news, so the tick can stay quiet.
 """
 import json, os, subprocess, sys
@@ -42,6 +45,26 @@ def gh_all(path):
     return [item for page in pages for item in page]
 
 
+def search(q):
+    pages = gh("--paginate", "--slurp", "-X", "GET", "search/issues", "-f", f"q={q}", "-f", "per_page=100")
+    return [item for page in pages for item in page["items"]]
+
+
+def pr_ref(pr):
+    return f"{pr['repository_url'].split('/repos/')[1].split('/')[1]}#{pr['number']}"
+
+
+def asks_of_others(org, owner, since):
+    """PRs of others that wait on the owner: a review request (every run) or a new mention (since `since`)."""
+    requested = search(f"org:{org} is:pr is:open review-requested:{owner}")
+    for pr in requested:
+        print(f"REVIEW-REQ {pr_ref(pr)} {pr['user']['login']} {pr['title'][:100]}")
+    seen = {pr["number"] for pr in requested}
+    for pr in search(f"org:{org} is:pr is:open mentions:{owner} -author:{owner}"):
+        if pr["number"] not in seen and after(pr["updated_at"], since):
+            print(f"MENTION {pr_ref(pr)} {pr['user']['login']} {pr['title'][:100]}")
+
+
 def main():
     since = at(sys.argv[1])
     if since.tzinfo is None:
@@ -49,10 +72,8 @@ def main():
     cfg = json.load(open(os.path.join(ROOT, "config", "watch.json")))
     owner = cfg["owner"]["github"]
     for org in cfg["github_orgs"]:
-        q = f"org:{org} is:pr is:open author:{owner}"
-        pages = gh("--paginate", "--slurp", "-X", "GET", "search/issues", "-f", f"q={q}", "-f", "per_page=100")
-        prs = [item for page in pages for item in page["items"]]
-        for pr in prs:
+        asks_of_others(org, owner, since)
+        for pr in search(f"org:{org} is:pr is:open author:{owner}"):
             repo = pr["repository_url"].split("/repos/")[1]
             n = pr["number"]
             ref = f"{repo.split('/')[1]}#{n}"
