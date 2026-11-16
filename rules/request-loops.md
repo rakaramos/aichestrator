@@ -23,7 +23,7 @@ The owner gave standing approval for these loops. Do not ask first, and do not s
 ## The brief
 
 - The request ID, the channel and thread `ts`, and the ask in the requester's own words.
-- A worktree under `/Volumes/HD/Developer/worktrees/<request-id>-<topic>` and a `PROGRESS.md` there. The loop updates the file after each step, so a new loop can resume from it.
+- A worktree under `/Volumes/HD/Developer/worktrees/<request-id>-<topic>` and a `PROGRESS.md` there. The loop updates the file after each step, so a new loop can resume from it, and names in it every worktree and scratch folder it creates (the cleanup reads these paths).
 - What done looks like, and what needs the owner's yes first: a production deploy or release, a post in the owner's name that is not a completion reply, and a review that the owner must sign.
 - Report to the orchestrator session with `SendMessage`. The loop does not post to Slack; the orchestrator replies in the thread.
 - The global rules: never push to main or master, never force-push, write in Simplified Technical English.
@@ -33,3 +33,21 @@ The owner gave standing approval for these loops. Do not ask first, and do not s
 - For every open item with a `loop`, check that the loop still runs. A `session` loop: `list_sessions` with `linked: true`. An `agent` loop: its task status.
 - A loop that stopped before the item is done: start a new loop with the same brief and the line "resume from `PROGRESS.md`".
 - Relay each loop report: completion replies go to the thread at once; asks for the owner go to the top of the tick output.
+
+## When the item is done: close the loop and reclaim disk space
+
+On each tick, after the completion reply is posted and the item is closed, clean up its loop. The owner gave standing approval for this.
+
+1. **Stop and archive the loop.** A `session` loop: when `list_sessions` with `linked: true` shows it idle or done, call `archive_session`. A session that still works or waits for the owner stays. A `scheduled_task` loop: call `delete_scheduled_task` for `loop-<request-id>`. An `agent` loop: nothing to do once it has finished.
+2. **Remove its worktrees.** Run, from this repo:
+
+   ```bash
+   python3 scripts/loops/cleanup-worktrees.py --allow-local-head --include-plain \
+     --from-progress <PROGRESS.md of each closed item> \
+     --protect <PROGRESS.md of each open item>
+   ```
+
+   First without `--apply` (dry run), then with `--apply`. The script removes only folders directly under `/Volumes/HD/Developer/worktrees` that have no uncommitted change to a tracked file. It never touches a path that an open item's notes name. It copies each `PROGRESS.md` and the review notes next to it into `state/archive/`, deletes the logs next to it, and deletes the Xcode DerivedData of each removed worktree.
+3. **Report it in one line** in the tick output: the folders removed, the space reclaimed, and each `KEEP` line with its reason. A `KEEP` for uncommitted changes needs the owner's look; leave it.
+
+So that step 2 finds every folder, each brief tells the loop to name, in its `PROGRESS.md`, every worktree and scratch folder it creates under the worktrees root.
