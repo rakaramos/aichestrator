@@ -39,6 +39,17 @@ The owner gave standing approval for these loops. Do not ask first, and do not s
 
 - For every open item with a `loop`, check that the loop still runs. A `session` loop: `list_sessions` with `linked: true`, or `get_session` by ID for a `hidden: true` loop. An `agent` loop: its task status.
 - A `hidden: true` loop: promote it on the first owner turn (see "Promote it on the next owner turn" above). Until then, list it at the top of the tick output.
+- Run `scripts/loops/hidden-loops.py` on every tick. It lists each open item without a visible child session: a hidden scheduled-task run, a background agent, or no loop at all (status `open`, `new` or `in_progress`). It exits 1 when the list is not empty. Put the list at the top of the tick output, and send a `PushNotification` for each new entry that asks the owner to reply "promote", so an owner turn comes soon.
+- An item that the orchestrator owns on purpose (for example a thread it only relays) gets `loop: {kind: "orchestrator", reason}`. The script then skips it. Do not use this for work that a session can do.
+
+## The guard on owner turns
+
+**Why:** for weeks, requests got the ⏳ reaction and a hidden scheduled-task run, but no owner turn promoted the run. The rule above existed, but nothing enforced it, so the owner saw no session for the request.
+
+A `UserPromptSubmit` hook in `~/.claude/settings.json` runs `scripts/loops/hidden-loops.py --hook` on every prompt. It acts only when the session folder is this repo. When the list is not empty:
+
+- On an owner turn (a prompt that does not start with "Orchestrator tick:"), it injects "ORCHESTRATOR GUARD — DO THIS FIRST" with the list. Promote every item before you answer the message: `start_session`, archive the hidden run, delete its task (or stop the agent), and record `{kind: "session", id, progress, child_of}`.
+- On a tick, it injects the list and the reminder to show it at the top and to send the push notification.
 - A loop that stopped before the item is done: start a new loop with the same brief and the line "resume from `PROGRESS.md`".
 - Relay each loop report: completion replies go to the thread at once; asks for the owner go to the top of the tick output.
 
