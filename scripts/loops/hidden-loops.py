@@ -26,6 +26,15 @@ ACTIVE = {"open", "new", "in_progress"}
 # A loop kind the owner cannot open as a session.
 NOT_VISIBLE = {"scheduled_task", "agent"}
 TICK_PREFIX = "Orchestrator tick:"
+# Prompts that come from automation, not from the owner. The app refuses
+# start_session on these turns too, so they get the tick text.
+AUTOMATED_MARKERS = (
+    "Another Claude session sent a message",
+    "<cross-session-message",
+    "<task-notification",
+    "<side-sessions-event",
+    "[SYSTEM NOTIFICATION",
+)
 
 
 def find_problems():
@@ -77,11 +86,12 @@ def hook():
         return 0
     listing = format_list(problems)
     prompt = (data.get("prompt") or "").lstrip()
-    if prompt.startswith(TICK_PREFIX):
+    automated = prompt.startswith(TICK_PREFIX) or any(m in prompt[:400] for m in AUTOMATED_MARKERS)
+    if automated:
         text = (
             "ORCHESTRATOR GUARD: these open requests have no visible child session:\n"
             f"{listing}\n"
-            "This tick cannot call start_session (automated turn). Put this list at the top "
+            "This turn cannot call start_session (automated turn: a tick or a message from a session or task). Put this list at the top "
             "of the tick output with links, and send one PushNotification per new entry "
             "asking the owner to reply 'promote' so an owner turn can start the child sessions."
         )
