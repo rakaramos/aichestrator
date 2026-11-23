@@ -59,6 +59,21 @@ def find_problems():
         if loop.get("hidden") or kind in NOT_VISIBLE:
             what = "hidden scheduled-task run" if (loop.get("hidden") or kind == "scheduled_task") else "background agent"
             problems.append((rid, status, what, loop))
+    # A request routed into the session of another request has no session
+    # named for it: the owner sees the hourglass and no session. Each open
+    # request gets its own session, unless the item says on purpose that it
+    # is part of another request (loop.folded_into = that request's id).
+    owners = {}
+    for item in items:
+        if (item.get("status") or "") in CLOSED:
+            continue
+        loop = item.get("loop") or {}
+        if loop.get("kind") == "session" and loop.get("id") and not loop.get("folded_into"):
+            owners.setdefault(loop["id"], []).append(item.get("id") or "(no id)")
+    for sid, rids in owners.items():
+        if len(rids) > 1:
+            for rid in rids[1:]:
+                problems.append((rid, "shared", f"shares session {sid} with {rids[0]} (start its own session, or set loop.folded_into)", None))
     return problems
 
 
