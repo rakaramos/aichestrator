@@ -50,6 +50,7 @@ A `UserPromptSubmit` hook in `~/.claude/settings.json` runs `scripts/loops/hidde
 
 - On an owner turn (a prompt that does not start with "Orchestrator tick:"), it injects "ORCHESTRATOR GUARD — DO THIS FIRST" with the list. Promote every item before you answer the message: `start_session`, archive the hidden run, delete its task (or stop the agent), and record `{kind: "session", id, progress, child_of}`.
 - On a tick, it injects the list and the reminder to show it at the top and to send the push notification.
+- **One session per request.** Do not route a new request, or a follow-up that got its own ⏳, into the session of another request. That session has another request's name, so the owner sees the ⏳ and no session for it (2026-11-23, SAMI-082 follow-up sent into the SAMI-167 session). The guard lists two open items with the same session id. Start a session named for the new request and move the shared PR to it. Only when one request is part of another on purpose (the same PR, a sub-task of a larger task) set `loop.folded_into` to the other request's id.
 - A loop that stopped before the item is done: start a new loop with the same brief and the line "resume from `PROGRESS.md`".
 - Relay each loop report: completion replies go to the thread at once; asks for the owner go to the top of the tick output.
 
