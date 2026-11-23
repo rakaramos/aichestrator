@@ -15,6 +15,7 @@ Usage:
 """
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -101,7 +102,11 @@ def hook():
         return 0
     listing = format_list(problems)
     prompt = (data.get("prompt") or "").lstrip()
-    automated = prompt.startswith(TICK_PREFIX) or any(m in prompt[:400] for m in AUTOMATED_MARKERS)
+    # The app puts <system-reminder> blocks (session notes, linked-session
+    # lists) before the event text, so a side-sessions event can start far
+    # beyond the first 400 characters. Remove those blocks first.
+    body = re.sub(r"<system-reminder>.*?</system-reminder>", "", prompt, flags=re.S).lstrip()
+    automated = body.startswith(TICK_PREFIX) or any(m in body[:400] for m in AUTOMATED_MARKERS)
     if automated:
         text = (
             "ORCHESTRATOR GUARD: these open requests have no visible child session:\n"
