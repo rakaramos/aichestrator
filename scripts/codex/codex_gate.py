@@ -151,7 +151,8 @@ def cmd_review(a):
 
 # ------------------------------------------------------------------ hook mode
 
-PUSH_RE = re.compile(r"(?:^|[\s;&|(])git\s+((?:-[Cc]\s+\S+\s+)*)push\b([^;&|]*)")
+_ARG = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
+PUSH_RE = re.compile(r"(?:^|[\s;&|(])git\s+((?:-[Cc]\s+" + _ARG + r"\s+)*)push\b([^;&|]*)")
 CD_RE = re.compile(r"(?:^|[\s;&|(])cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)")
 
 
@@ -176,7 +177,7 @@ def push_dir(cmd, m, cwd):
     for cdm in CD_RE.finditer(cmd[:m.start() + 1]):  # apply every cd in order
         c = os.path.expanduser(shlex.split(cdm.group(1))[0])
         d = os.path.normpath(c if os.path.isabs(c) else os.path.join(d, c))
-    for cm in re.finditer(r"-C\s+(\S+)", m.group(1) or ""):
+    for cm in re.finditer(r"-[Cc]\s+(" + _ARG + ")", m.group(1) or ""):
         c = os.path.expanduser(shlex.split(cm.group(1))[0])
         d = c if os.path.isabs(c) else os.path.join(d, c)
     return d
@@ -239,6 +240,16 @@ def push_sources(args):
             positional.append(w)
         i += 1
     refspecs = positional if repo_opt else positional[1:]
+    if any(r.lstrip("+") == ":" for r in refspecs):
+        return False, [ALL]  # the bare ':' refspec pushes every matching branch
+    out, j = [], 0
+    while j < len(refspecs):  # `tag <name>` is a tag-only refspec
+        if refspecs[j] == "tag" and j + 1 < len(refspecs):
+            tags, j = True, j + 2
+            continue
+        out.append(refspecs[j])
+        j += 1
+    refspecs = out
     if delete:
         return True, []  # every refspec is a deletion
     updates = [r.lstrip("+") for r in refspecs if not r.lstrip("+").startswith(":")]
