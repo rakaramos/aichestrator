@@ -87,7 +87,8 @@ def default_base(cwd):
     except Exception:
         pass
     head = git(["symbolic-ref", "-q", "refs/remotes/origin/HEAD"], cwd, check=False)
-    return head.rsplit("/", 1)[-1] if head else "main"
+    prefix = "refs/remotes/origin/"
+    return head[len(prefix):] if head.startswith(prefix) else "main"
 
 
 def usage_window():
@@ -172,10 +173,9 @@ def allow_note(note):
 def push_dir(cmd, m, cwd):
     """Directory a push runs in: the last `cd` before it, then its own `-C`."""
     d = cwd
-    cds = list(CD_RE.finditer(cmd[:m.start() + 1]))
-    if cds:
-        c = os.path.expanduser(shlex.split(cds[-1].group(1))[0])
-        d = c if os.path.isabs(c) else os.path.join(cwd, c)
+    for cdm in CD_RE.finditer(cmd[:m.start() + 1]):  # apply every cd in order
+        c = os.path.expanduser(shlex.split(cdm.group(1))[0])
+        d = os.path.normpath(c if os.path.isabs(c) else os.path.join(d, c))
     for cm in re.finditer(r"-C\s+(\S+)", m.group(1) or ""):
         c = os.path.expanduser(shlex.split(cm.group(1))[0])
         d = c if os.path.isabs(c) else os.path.join(d, c)
@@ -187,6 +187,28 @@ SKIP_FLAGS = {"--dry-run", "-n", "--help", "-h"}
 DELETE_FLAGS = {"--delete", "-d"}
 ALL_FLAGS = {"--all", "--mirror", "--branches"}
 ALL = "ALL"  # marker: the push uploads many branches at once
+
+
+def push_remote(args):
+    """The remote a push names (first positional, or --repo), else origin."""
+    try:
+        words = shlex.split(args)
+    except ValueError:
+        words = args.split()
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w == "--repo" and i + 1 < len(words):
+            return words[i + 1]
+        if w.startswith("--repo="):
+            return w.split("=", 1)[1]
+        if w in OPTS_WITH_VALUE:
+            i += 2
+            continue
+        if not w.startswith("-"):
+            return w
+        i += 1
+    return "origin"
 
 
 def push_sources(args):
@@ -273,11 +295,14 @@ def cmd_hook():
                 continue
         except Exception:
             continue  # not a repo here: let git report its own error
-        if not srcs and git(["config", "push.default"], cwd, check=False) == "matching":
+        if not srcs and (git(["config", "push.default"], cwd, check=False) == "matching" or
+                         git(["config", "--get-all", f"remote.{push_remote(m.group(2))}.push"],
+                             cwd, check=False)):
             srcs = [ALL]
         if ALL in srcs:
-            return deny("Codex gate: this push uploads many branches at once (--all, --mirror, a "
-                        "wildcard refspec or push.default=matching). Push each branch by name, "
+            return deny("Codex gate: this push uploads many or configured branches at once "
+                        "(--all, --mirror, a wildcard refspec, push.default=matching or "
+                        "remote.<name>.push). Push each branch by name with an explicit refspec, "
                         f"after `{SELF} review` on it.")
         recs = read_records(cwd)
         for src in srcs or ["HEAD"]:
