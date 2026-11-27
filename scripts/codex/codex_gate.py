@@ -304,10 +304,12 @@ def check_ref(cwd, refspec, recs):
     return f"{name} ({sha[:9]})"
 
 
-HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)([^\s'\"<>|;&()]+)\1[^\n]*\n.*?\n[ \t]*\2[ \t]*(?=\n|$)",
-                        re.S)
+# A heredoc: header line, then body lines up to the FIRST line that is the delimiter.
+HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)([^\s'\"<>|;&()]+)\1[^\n]*\n"
+                        r"(?:[^\n]*\n)*?[ \t]*\2[ \t]*(?=\n|$)")
 QUOTED_RE = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
-MENTIONS_PUSH = re.compile(r"\bgit\b.*\bpush\b", re.S)
+# Text, not a ref: it mentions git and push with whitespace between (ref names have none).
+MENTIONS_PUSH = re.compile(r"\bgit\s+(?:\S+\s+)*?push\b|\bgit\b.*\s.*\bpush\b", re.S)
 
 
 def mask_text(cmd):
