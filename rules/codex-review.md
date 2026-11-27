@@ -33,7 +33,7 @@ It blocks:
 
 ### Limits
 
-The hook reads the shell text of the command. It catches a forgotten review in the usual forms (`git push`, `cd … && git push`, `git -C … push`, several pushes in one command, explicit refspecs). It is not a security boundary: a command built to hide a push (for example a push inside `eval`, a script file or an alias) can pass it. Do not write commands like that; push with a plain `git push`.
+The hook reads the shell text of the command. It catches a forgotten review in the usual forms (`git push`, `cd … && git push`, `git -C … push`, several pushes in one command, explicit refspecs). It ignores heredoc bodies and quoted strings that mention a push (commit messages, PR bodies, `echo` text), so a push inside `bash -c "…"` or `eval "…"` is not seen either. It is not a security boundary: a command built to hide a push (for example a push inside `eval`, a script file or an alias) can pass it. Do not write commands like that; push with a plain `git push`.
 
 A detached `HEAD` is checked by commit only: the merge-of-base exemption needs a branch name.
 
