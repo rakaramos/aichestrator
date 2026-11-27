@@ -34,6 +34,7 @@ The owner gave standing approval for these loops. Do not ask first, and do not s
 - What done looks like, and what needs the owner's yes first: a production deploy or release, a post in the owner's name that is not a completion reply, and a review that the owner must sign.
 - Report to the orchestrator session with `SendMessage`. The loop does not post to Slack; the orchestrator replies in the thread.
 - The global rules: never push to main or master, never force-push, write in Simplified Technical English.
+- Codex review before every push (`rules/codex-review.md`): commit, run `/Volumes/HD/Developer/aichestrator/scripts/codex/codex_gate.py review --dir <worktree>`, fix real findings, then push and write the result in the PR body. A hook blocks the push without it; when the Codex usage is gone, the script opens a 3-hour skip window.
 
 ## Each tick
 
