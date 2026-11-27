@@ -152,7 +152,9 @@ def cmd_review(a):
 # ------------------------------------------------------------------ hook mode
 
 _ARG = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
-PUSH_RE = re.compile(r"(?:^|[\s;&|(])git\s+((?:-[Cc]\s+" + _ARG + r"\s+)*)push\b([^;&|]*)")
+# git, then any global options (-C dir, -C<dir>, -c k=v, -ck=v, --flag[=v]), then push.
+_GLOBAL = r"(?:-[Cc]\s*" + _ARG + r"|--?[\w.-]+(?:=" + _ARG + r")?)"
+PUSH_RE = re.compile(r"(?:^|[\s;&|(])git((?:\s+" + _GLOBAL + r")*)\s+push\b([^;&|]*)")
 CD_RE = re.compile(r"(?:^|[\s;&|(])cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)")
 
 
@@ -177,9 +179,23 @@ def push_dir(cmd, m, cwd):
     for cdm in CD_RE.finditer(cmd[:m.start() + 1]):  # apply every cd in order
         c = os.path.expanduser(shlex.split(cdm.group(1))[0])
         d = os.path.normpath(c if os.path.isabs(c) else os.path.join(d, c))
-    for cm in re.finditer(r"-[Cc]\s+(" + _ARG + ")", m.group(1) or ""):
-        c = os.path.expanduser(shlex.split(cm.group(1))[0])
-        d = c if os.path.isabs(c) else os.path.join(d, c)
+    try:
+        words = shlex.split(m.group(1) or "")
+    except ValueError:
+        words = (m.group(1) or "").split()
+    i = 0
+    while i < len(words):  # only -C changes the directory; -c sets config
+        w, c = words[i], None
+        if w == "-C" and i + 1 < len(words):
+            c, i = words[i + 1], i + 1
+        elif w.startswith("-C") and len(w) > 2:
+            c = w[2:]
+        elif w == "-c":
+            i += 1
+        if c is not None:
+            c = os.path.expanduser(c)
+            d = os.path.normpath(c if os.path.isabs(c) else os.path.join(d, c))
+        i += 1
     return d
 
 
@@ -296,16 +312,21 @@ def cmd_hook():
         skip, srcs = push_sources(m.group(2))
         if skip:
             continue
-        if re.search(r"\bgit\s+(-[Cc]\s+\S+\s+)*commit\b", cmd[:m.start()]):
+        if re.search(r"\bgit(?:\s+" + _GLOBAL + r")*\s+commit\b", cmd[:m.start()]):
             return deny("Codex gate: this command commits and pushes in one step. Commit first, "
                         f"run `{SELF} review` on the new HEAD, then push in a separate command.")
         cwd = push_dir(cmd, m, base_cwd)
+        if not os.path.isdir(cwd):
+            continue  # the directory does not exist: git push fails on its own
         try:
             git(["rev-parse", "HEAD"], cwd, timeout=10)
             if not git(["remote"], cwd, timeout=10):
                 continue
         except Exception:
-            continue  # not a repo here: let git report its own error
+            # Fail closed: a push the hook cannot place in a repo is not checked otherwise.
+            return deny(f"Codex gate: cannot read the git repo for this push (folder {cwd}). "
+                        "Run a plain `git push …` from inside the repo or worktree, or with "
+                        "`git -C <absolute path> push …`.")
         if not srcs and (git(["config", "push.default"], cwd, check=False) == "matching" or
                          git(["config", "--get-all", f"remote.{push_remote(m.group(2))}.push"],
                              cwd, check=False)):
