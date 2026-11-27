@@ -304,6 +304,30 @@ def check_ref(cwd, refspec, recs):
     return f"{name} ({sha[:9]})"
 
 
+# A heredoc: header line, then body lines up to the FIRST line that is the delimiter.
+HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)([^\s'\"<>|;&()]+)\1[^\n]*\n"
+                        r"(?:[^\n]*\n)*?[ \t]*\2[ \t]*(?=\n|$)")
+QUOTED_RE = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
+# Text, not a ref: it mentions git and push with whitespace between (ref names have none).
+MENTIONS_PUSH = re.compile(r"\bgit\s+(?:\S+\s+)*?push\b|\bgit\b.*\s.*\bpush\b", re.S)
+
+
+def mask_text(cmd):
+    """Drop heredoc bodies and quoted strings that only mention `git … push`
+    (commit messages, PR bodies, echo/printf text), so they are not read as
+    pushes. Quoted paths such as -C '/a b' do not mention git push and stay."""
+    cmd = HEREDOC_RE.sub(lambda m: m.group(0).split("\n", 1)[0] + "\n" + m.group(2), cmd)
+
+    def keep_or_mask(m):
+        if not MENTIONS_PUSH.search(m.group(0)):
+            return m.group(0)
+        if re.search(r"(?:-C|\bcd)[ \t]*$", cmd[:m.start()]):
+            return m.group(0)  # a folder for -C or cd: needed to place the push
+        return "''"
+
+    return QUOTED_RE.sub(keep_or_mask, cmd)
+
+
 def cmd_hook():
     try:
         data = json.load(sys.stdin)
@@ -312,6 +336,7 @@ def cmd_hook():
     cmd = (data.get("tool_input") or {}).get("command") or ""
     if "push" not in cmd or "git" not in cmd:
         return 0
+    cmd = mask_text(cmd)
     base_cwd = data.get("cwd") or os.getcwd()
     missing, dirs = [], []
     for m in PUSH_RE.finditer(cmd):
