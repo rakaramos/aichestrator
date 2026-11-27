@@ -154,7 +154,7 @@ def cmd_review(a):
 _ARG = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
 # git, then any global options (-C dir, -C<dir>, -c k=v, -ck=v, --flag[=v]), then push.
 _GLOBAL = r"(?:-[Cc]\s*" + _ARG + r"|--?[\w.-]+(?:=" + _ARG + r")?)"
-PUSH_RE = re.compile(r"(?:^|[\s;&|(])git((?:\s+" + _GLOBAL + r")*)\s+push\b([^;&|]*)")
+PUSH_RE = re.compile(r"(?:^|[\s;&|(])git((?:[ \t]+" + _GLOBAL + r")*)[ \t]+push\b([^;&|\n]*)")
 CD_RE = re.compile(r"(?:^|[\s;&|(])cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)")
 
 
@@ -319,6 +319,10 @@ def cmd_hook():
         if re.search(r"\bgit(?:\s+" + _GLOBAL + r")*\s+commit\b", cmd[:m.start()]):
             return deny("Codex gate: this command commits and pushes in one step. Commit first, "
                         f"run `{SELF} review` on the new HEAD, then push in a separate command.")
+        if re.search(r"\(\s*cd\s|\$\(\s*cd\s|`\s*cd\s", cmd[:m.start()]):
+            return deny("Codex gate: a `cd` inside a subshell comes before this push, so the hook "
+                        "cannot tell the push folder. Use `git -C <absolute path> push …` or a "
+                        "plain `cd <path> && git push …`.")
         cwd = push_dir(cmd, m, base_cwd)
         if re.search(r"[$`]", cwd) or not os.path.isdir(cwd):
             return deny(f"Codex gate: cannot resolve the folder of this push ({cwd}). Use a literal "
