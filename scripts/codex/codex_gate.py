@@ -304,7 +304,8 @@ def check_ref(cwd, refspec, recs):
     return f"{name} ({sha[:9]})"
 
 
-HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)(\w+)\1[^\n]*\n.*?\n[ \t]*\2[ \t]*(?=\n|$)", re.S)
+HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)([^\s'\"<>|;&()]+)\1[^\n]*\n.*?\n[ \t]*\2[ \t]*(?=\n|$)",
+                        re.S)
 QUOTED_RE = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
 MENTIONS_PUSH = re.compile(r"\bgit\b.*\bpush\b", re.S)
 
@@ -314,7 +315,15 @@ def mask_text(cmd):
     (commit messages, PR bodies, echo/printf text), so they are not read as
     pushes. Quoted paths such as -C '/a b' do not mention git push and stay."""
     cmd = HEREDOC_RE.sub(lambda m: m.group(0).split("\n", 1)[0] + "\n" + m.group(2), cmd)
-    return QUOTED_RE.sub(lambda m: "''" if MENTIONS_PUSH.search(m.group(0)) else m.group(0), cmd)
+
+    def keep_or_mask(m):
+        if not MENTIONS_PUSH.search(m.group(0)):
+            return m.group(0)
+        if re.search(r"(?:-C|\bcd)[ \t]*$", cmd[:m.start()]):
+            return m.group(0)  # a folder for -C or cd: needed to place the push
+        return "''"
+
+    return QUOTED_RE.sub(keep_or_mask, cmd)
 
 
 def cmd_hook():
