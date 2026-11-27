@@ -182,37 +182,49 @@ def push_dir(cmd, m, cwd):
     return d
 
 
-OPTS_WITH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
-SKIP_FLAGS = {"--dry-run", "-n", "--help", "-h", "--tags"}
+OPTS_WITH_VALUE = {"-o", "--push-option", "--receive-pack", "--exec"}
+SKIP_FLAGS = {"--dry-run", "-n", "--help", "-h"}
 DELETE_FLAGS = {"--delete", "-d"}
+ALL_FLAGS = {"--all", "--mirror", "--branches"}
+ALL = "ALL"  # marker: the push uploads many branches at once
 
 
 def push_sources(args):
     """Return (skip, sources) for one push. sources are the refs it uploads;
-    an empty list means the current branch (plain `git push [remote]`)."""
+    an empty list means the default push (the current branch), and [ALL]
+    means a push of many branches (--all, --mirror, a wildcard refspec)."""
     try:
         words = shlex.split(args)
     except ValueError:
         words = args.split()
-    positional, i, delete = [], 0, False
+    positional, i, delete, tags, repo_opt = [], 0, False, False, False
     while i < len(words):
         w = words[i]
         if w in SKIP_FLAGS:
             return True, []
+        if w in ALL_FLAGS:
+            return False, [ALL]
         if w in DELETE_FLAGS:
             delete = True
+        elif w == "--tags":
+            tags = True
+        elif w == "--repo" or w.startswith("--repo="):
+            repo_opt = True
+            i += w == "--repo"
         elif w in OPTS_WITH_VALUE:
             i += 1
         elif not w.startswith("-"):
             positional.append(w)
         i += 1
-    refspecs = positional[1:]
+    refspecs = positional if repo_opt else positional[1:]
     if delete:
         return True, []  # every refspec is a deletion
-    if refspecs and all(r.lstrip("+").startswith(":") for r in refspecs):
-        return True, []
-    srcs = [r.lstrip("+").split(":", 1)[0] for r in refspecs if not r.lstrip("+").startswith(":")]
-    return False, srcs
+    updates = [r.lstrip("+") for r in refspecs if not r.lstrip("+").startswith(":")]
+    if not updates and (tags or refspecs):
+        return True, []  # only tags, or only deletions
+    if any("*" in r for r in updates):
+        return False, [ALL]
+    return False, [r.split(":", 1)[0] for r in updates]
 
 
 def check_ref(cwd, src, recs):
@@ -261,6 +273,12 @@ def cmd_hook():
                 continue
         except Exception:
             continue  # not a repo here: let git report its own error
+        if not srcs and git(["config", "push.default"], cwd, check=False) == "matching":
+            srcs = [ALL]
+        if ALL in srcs:
+            return deny("Codex gate: this push uploads many branches at once (--all, --mirror, a "
+                        "wildcard refspec or push.default=matching). Push each branch by name, "
+                        f"after `{SELF} review` on it.")
         recs = read_records(cwd)
         for src in srcs or ["HEAD"]:
             label = check_ref(cwd, src, recs)

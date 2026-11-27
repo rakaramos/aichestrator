@@ -23,10 +23,13 @@ A `PreToolUse` hook on Bash (`codex_gate.py hook`) checks every `git push` in a 
 
 - A commit with a recorded review.
 - A merge of the base branch that does not change the branch diff (the diff hash is the same as at the last review of that branch).
-- `--dry-run`, `--tags`, `--help`, and pushes that only delete refs (`--delete`, or only `:branch` refspecs). A push that deletes one ref and updates another is checked.
-- Tag refs, and a repo without a remote.
+- `--dry-run`, `--help`, pushes of tags only, and pushes that only delete refs (`--delete`, or only `:branch` refspecs). A push that also updates a branch (`--tags origin feature`, `:old new`) is checked.
+- A repo without a remote.
 
-It blocks `git commit … && git push` in one command: commit, review, then push.
+It blocks:
+
+- `git commit … && git push` in one command: commit, review, then push.
+- Pushes of many branches at once (`--all`, `--mirror`, a wildcard refspec, or `push.default=matching`): push each branch by name.
 
 ### Install
 
