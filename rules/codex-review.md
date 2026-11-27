@@ -23,13 +23,11 @@ A `PreToolUse` hook on Bash (`codex_gate.py hook`) checks every `git push` in a 
 
 - A commit with a recorded review.
 - A merge of the base branch that does not change the branch diff (the diff hash is the same as at the last review of that branch).
-- `--dry-run`, `--help`, pushes of tags only, and pushes that only delete refs (`--delete`, or only `:branch` refspecs). A push that also updates a branch (`--tags origin feature`, `:old new`) is checked.
-- A repo without a remote, and a folder that does not exist (`git push` fails on its own there).
+- `--dry-run`, `--help`, pushes of tags only (annotated or lightweight), and pushes that only delete refs (`--delete`, or only `:branch` refspecs). A push that also updates a branch (`--tags origin feature`, `:old new`) is checked.
 
 It blocks:
 
-- A push in a folder that exists but is not a readable git repo (it fails closed): run the push from inside the repo, or with `git -C <absolute path>`.
-
+- A push whose folder the hook cannot resolve or read as a git repo (it fails closed): a shell variable in the `cd` or `-C` path, a missing folder, or a folder that is not a repo. Use a literal absolute path.
 - `git commit … && git push` in one command: commit, review, then push.
 - Pushes of many branches at once (`--all`, `--mirror`, a wildcard refspec, or `push.default=matching`): push each branch by name.
 

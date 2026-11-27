@@ -278,8 +278,10 @@ def push_sources(args):
 
 def check_ref(cwd, src, recs):
     """None when the ref is reviewed (or not a commit), else a short label."""
-    if src.startswith("refs/tags/") or git(["cat-file", "-t", src], cwd, check=False) == "tag":
-        return None  # tags are not code changes under review
+    full = git(["rev-parse", "--symbolic-full-name", src], cwd, check=False)
+    if src.startswith("refs/tags/") or full.startswith("refs/tags/") or \
+            git(["cat-file", "-t", src], cwd, check=False) == "tag":
+        return None  # tags (annotated or lightweight) are not code changes under review
     try:
         sha = git(["rev-parse", "--verify", "-q", f"{src}^{{commit}}"], cwd, timeout=10)
     except Exception:
@@ -316,12 +318,11 @@ def cmd_hook():
             return deny("Codex gate: this command commits and pushes in one step. Commit first, "
                         f"run `{SELF} review` on the new HEAD, then push in a separate command.")
         cwd = push_dir(cmd, m, base_cwd)
-        if not os.path.isdir(cwd):
-            continue  # the directory does not exist: git push fails on its own
+        if re.search(r"[$`]", cwd) or not os.path.isdir(cwd):
+            return deny(f"Codex gate: cannot resolve the folder of this push ({cwd}). Use a literal "
+                        "absolute path (no shell variables) with `cd` or `git -C`, then push.")
         try:
             git(["rev-parse", "HEAD"], cwd, timeout=10)
-            if not git(["remote"], cwd, timeout=10):
-                continue
         except Exception:
             # Fail closed: a push the hook cannot place in a repo is not checked otherwise.
             return deny(f"Codex gate: cannot read the git repo for this push (folder {cwd}). "
