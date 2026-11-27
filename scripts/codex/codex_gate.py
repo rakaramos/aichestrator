@@ -70,10 +70,10 @@ def add_record(cwd, rec):
         f.write(json.dumps(rec) + "\n")
 
 
-def diff_hash(cwd, base):
-    """Hash of the branch diff against origin/<base> (merge-base to HEAD)."""
-    mb = git(["merge-base", f"origin/{base}", "HEAD"], cwd)
-    raw = subprocess.run(["git", "-C", cwd, "diff", "--binary", mb, "HEAD"],
+def diff_hash(cwd, base, ref="HEAD"):
+    """Hash of the branch diff against origin/<base> (merge-base to ref)."""
+    mb = git(["merge-base", f"origin/{base}", ref], cwd)
+    raw = subprocess.run(["git", "-C", cwd, "diff", "--binary", mb, ref],
                          capture_output=True, timeout=120).stdout
     return hashlib.sha256(raw).hexdigest(), len(raw)
 
@@ -170,15 +170,71 @@ def allow_note(note):
 
 
 def push_dir(cmd, m, cwd):
-    opts = m.group(1)
-    cm = re.search(r"-C\s+(\S+)", opts or "")
-    if cm:
-        return os.path.expanduser(shlex.split(cm.group(1))[0])
-    cds = [c for c in CD_RE.finditer(cmd[:m.start() + 1])]
+    """Directory a push runs in: the last `cd` before it, then its own `-C`."""
+    d = cwd
+    cds = list(CD_RE.finditer(cmd[:m.start() + 1]))
     if cds:
-        d = os.path.expanduser(shlex.split(cds[-1].group(1))[0])
-        return d if os.path.isabs(d) else os.path.join(cwd, d)
-    return cwd
+        c = os.path.expanduser(shlex.split(cds[-1].group(1))[0])
+        d = c if os.path.isabs(c) else os.path.join(cwd, c)
+    for cm in re.finditer(r"-C\s+(\S+)", m.group(1) or ""):
+        c = os.path.expanduser(shlex.split(cm.group(1))[0])
+        d = c if os.path.isabs(c) else os.path.join(d, c)
+    return d
+
+
+OPTS_WITH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
+SKIP_FLAGS = {"--dry-run", "-n", "--help", "-h", "--tags"}
+DELETE_FLAGS = {"--delete", "-d"}
+
+
+def push_sources(args):
+    """Return (skip, sources) for one push. sources are the refs it uploads;
+    an empty list means the current branch (plain `git push [remote]`)."""
+    try:
+        words = shlex.split(args)
+    except ValueError:
+        words = args.split()
+    positional, i, delete = [], 0, False
+    while i < len(words):
+        w = words[i]
+        if w in SKIP_FLAGS:
+            return True, []
+        if w in DELETE_FLAGS:
+            delete = True
+        elif w in OPTS_WITH_VALUE:
+            i += 1
+        elif not w.startswith("-"):
+            positional.append(w)
+        i += 1
+    refspecs = positional[1:]
+    if delete:
+        return True, []  # every refspec is a deletion
+    if refspecs and all(r.lstrip("+").startswith(":") for r in refspecs):
+        return True, []
+    srcs = [r.lstrip("+").split(":", 1)[0] for r in refspecs if not r.lstrip("+").startswith(":")]
+    return False, srcs
+
+
+def check_ref(cwd, src, recs):
+    """None when the ref is reviewed (or not a commit), else a short label."""
+    if src.startswith("refs/tags/") or git(["cat-file", "-t", src], cwd, check=False) == "tag":
+        return None  # tags are not code changes under review
+    try:
+        sha = git(["rev-parse", "--verify", "-q", f"{src}^{{commit}}"], cwd, timeout=10)
+    except Exception:
+        return None  # a name git cannot resolve: let git report it
+    if any(r.get("sha") == sha and r.get("result") == "reviewed" for r in recs):
+        return None
+    name = git(["rev-parse", "--abbrev-ref", src], cwd, check=False) or src
+    mine = [r for r in recs if r.get("branch") == name and r.get("result") == "reviewed"]
+    if mine:
+        try:
+            dh, _ = diff_hash(cwd, mine[-1]["base"], sha)
+            if dh == mine[-1]["diffhash"]:
+                return None  # e.g. a merge of the base branch that leaves the branch diff unchanged
+        except Exception:
+            pass
+    return f"{name} ({sha[:9]})"
 
 
 def cmd_hook():
@@ -189,45 +245,40 @@ def cmd_hook():
     cmd = (data.get("tool_input") or {}).get("command") or ""
     if "push" not in cmd or "git" not in cmd:
         return 0
-    m = PUSH_RE.search(cmd)
-    if not m:
-        return 0
-    args = m.group(2)
-    if re.search(r"(^|\s)(--dry-run|-n|--delete|-d|--help|-h|--tags)(\s|$)", args) or \
-            re.search(r"(^|\s):\S", args):
-        return 0
-    if re.search(r"\bgit\s+(-[Cc]\s+\S+\s+)*commit\b", cmd[:m.start()]):
-        return deny("Codex gate: this command commits and pushes in one step. Commit first, run "
-                    f"`{SELF} review` on the new HEAD, then push in a separate command.")
-    cwd = push_dir(cmd, m, data.get("cwd") or os.getcwd())
-    try:
-        sha = git(["rev-parse", "HEAD"], cwd, timeout=10)
-        branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd, timeout=10)
-        if not git(["remote"], cwd, timeout=10):
-            return 0
-    except Exception:
-        return 0  # not a repo here: let git report its own error
-    recs = read_records(cwd)
-    if any(r.get("sha") == sha and r.get("result") == "reviewed" for r in recs):
-        return 0
-    mine = [r for r in recs if r.get("branch") == branch and r.get("result") == "reviewed"]
-    if mine:
+    base_cwd = data.get("cwd") or os.getcwd()
+    missing, dirs = [], []
+    for m in PUSH_RE.finditer(cmd):
+        skip, srcs = push_sources(m.group(2))
+        if skip:
+            continue
+        if re.search(r"\bgit\s+(-[Cc]\s+\S+\s+)*commit\b", cmd[:m.start()]):
+            return deny("Codex gate: this command commits and pushes in one step. Commit first, "
+                        f"run `{SELF} review` on the new HEAD, then push in a separate command.")
+        cwd = push_dir(cmd, m, base_cwd)
         try:
-            dh, _ = diff_hash(cwd, mine[-1]["base"])
-            if dh == mine[-1]["diffhash"]:
-                return 0  # e.g. a merge of the base branch that leaves the branch diff unchanged
+            git(["rev-parse", "HEAD"], cwd, timeout=10)
+            if not git(["remote"], cwd, timeout=10):
+                continue
         except Exception:
-            pass
+            continue  # not a repo here: let git report its own error
+        recs = read_records(cwd)
+        for src in srcs or ["HEAD"]:
+            label = check_ref(cwd, src, recs)
+            if label:
+                missing.append(label)
+                dirs.append(cwd)
+    if not missing:
+        return 0
     open_, until = usage_window()
     if open_:
-        return allow_note(f"Codex gate: no Codex review for {sha[:9]}, but the Codex usage limit "
-                          f"was reached; pushes are allowed without a review until {stamp(until)}. "
-                          "Write 'Codex review skipped: usage limit' in the PR body.")
-    return deny(f"Codex gate: no Codex review recorded for HEAD {sha[:9]} on {branch}. Run "
-                f"`{SELF} review --dir {cwd}` (add `--base <branch>` if the PR base is not the "
-                "default), fix real findings, commit, review again if HEAD changed, then push. "
-                "If Codex reports its usage limit, the script records that and pushes are allowed "
-                f"for {USAGE_SKIP_HOURS:g} h.")
+        return allow_note(f"Codex gate: no Codex review for {', '.join(missing)}, but the Codex "
+                          f"usage limit was reached; pushes are allowed without a review until "
+                          f"{stamp(until)}. Write 'Codex review skipped: usage limit' in the PR body.")
+    return deny(f"Codex gate: no Codex review recorded for {', '.join(missing)}. Check out the "
+                f"branch and run `{SELF} review --dir {dirs[0]}` (add `--base <branch>` if the PR "
+                "base is not the default), fix real findings, commit, review again if the commit "
+                "changed, then push. If Codex reports its usage limit, the script records that and "
+                f"pushes are allowed for {USAGE_SKIP_HOURS:g} h.")
 
 
 def main():

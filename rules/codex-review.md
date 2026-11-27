@@ -19,14 +19,33 @@ Every push of code changes gets a Codex review of the final branch diff first. T
 
 ## The gate
 
-A `PreToolUse` hook on Bash (`codex_gate.py hook`, in `~/.claude/settings.json`) blocks `git push` when `HEAD` has no recorded review. It lets these through:
+A `PreToolUse` hook on Bash (`codex_gate.py hook`) checks every `git push` in a command. For each ref the push uploads (the current branch when no refspec is given), it needs a recorded review. It lets these through:
 
-- A `HEAD` with a recorded review.
-- A merge of the base branch that does not change the branch diff (the diff hash is the same as at the last review).
-- `--dry-run`, `--delete`, `--tags`, `--help`, and a delete refspec (`:branch`).
-- A repo without a remote.
+- A commit with a recorded review.
+- A merge of the base branch that does not change the branch diff (the diff hash is the same as at the last review of that branch).
+- `--dry-run`, `--tags`, `--help`, and pushes that only delete refs (`--delete`, or only `:branch` refspecs). A push that deletes one ref and updates another is checked.
+- Tag refs, and a repo without a remote.
 
 It blocks `git commit … && git push` in one command: commit, review, then push.
+
+### Install
+
+The hook lives in `~/.claude/settings.json`, next to the other `PreToolUse` Bash hooks:
+
+```json
+{
+  "matcher": "Bash",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "/Volumes/HD/Developer/aichestrator/scripts/codex/codex_gate.py hook",
+      "timeout": 60
+    }
+  ]
+}
+```
+
+It points at this checkout on `main`, so keep the checkout on `main` (`prompts/tick.md`). The hook allows the push when the script itself fails, so a broken script never blocks unrelated commands; check that it still blocks after each change (pipe a `git push` command into `codex_gate.py hook` in an unreviewed repo).
 
 ## When the Codex usage is gone
 
