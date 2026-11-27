@@ -37,6 +37,8 @@ The hook reads the shell text of the command. It catches a forgotten review in t
 
 A detached `HEAD` is checked by commit only: the merge-of-base exemption needs a branch name.
 
+A review counts for its commit whatever base it used. The script takes the PR's own base by default; when you pass `--base`, pass the PR base.
+
 ### Install
 
 The hook lives in `~/.claude/settings.json`, next to the other `PreToolUse` Bash hooks:
@@ -58,7 +60,7 @@ It points at this checkout on `main`, so keep the checkout on `main` (`prompts/t
 
 ## When the Codex usage is gone
 
-When Codex answers that the usage limit is reached, the review script records that in `~/.codex-gate/usage-gone.json`. For the next 3 hours (`CODEX_GATE_USAGE_SKIP_HOURS`) the gate lets pushes through without a review. Then:
+When Codex answers that the account's usage limit or quota is used up ("usage limit", "insufficient_quota", "exceeded your quota"), the review script records that in `~/.codex-gate/usage-gone.json`. For the next 3 hours (`CODEX_GATE_USAGE_SKIP_HOURS`) the gate lets pushes through without a review. Then:
 
 - Write "Codex review skipped: usage limit" in the PR body.
 - Review the diff yourself before the push.

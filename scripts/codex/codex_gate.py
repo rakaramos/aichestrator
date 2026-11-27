@@ -31,9 +31,11 @@ import time
 
 USAGE_SKIP_HOURS = float(os.environ.get("CODEX_GATE_USAGE_SKIP_HOURS", "3"))
 USAGE_FILE = os.path.expanduser(os.environ.get("CODEX_GATE_USAGE_FILE", "~/.codex-gate/usage-gone.json"))
+# Only messages that say the account's usage or quota is used up. Rate limits,
+# 429s and "try again in N seconds" are transient: they keep the push blocked.
 USAGE_PATTERNS = re.compile(
-    r"usage limit|rate[ _-]?limit|quota|insufficient_quota|too many requests|"
-    r"\b429\b|hit your (usage )?limit|limit (has been )?reached|try again (at|in) ",
+    r"usage limit|hit your (usage )?limit|insufficient_quota|exceeded your (current )?quota|"
+    r"quota (has been |was )?(exceeded|exhausted|reached)|out of (usage|credits)",
     re.I,
 )
 SELF = os.path.abspath(__file__)
