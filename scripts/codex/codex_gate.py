@@ -273,15 +273,17 @@ def push_sources(args):
         return True, []  # only tags, or only deletions
     if any("*" in r for r in updates):
         return False, [ALL]
-    return False, [r.split(":", 1)[0] for r in updates]
+    return False, updates  # full refspecs: check_ref reads the source and the destination
 
 
-def check_ref(cwd, src, recs):
-    """None when the ref is reviewed (or not a commit), else a short label."""
+def check_ref(cwd, refspec, recs):
+    """None when the refspec needs no review or is reviewed, else a short label."""
+    src, _, dst = refspec.partition(":")
     full = git(["rev-parse", "--symbolic-full-name", src], cwd, check=False)
-    if src.startswith("refs/tags/") or full.startswith("refs/tags/") or \
-            git(["cat-file", "-t", src], cwd, check=False) == "tag":
-        return None  # tags (annotated or lightweight) are not code changes under review
+    is_tag = src.startswith("refs/tags/") or full.startswith("refs/tags/") or \
+        git(["cat-file", "-t", src], cwd, check=False) == "tag"
+    if is_tag and (not dst or dst.startswith("refs/tags/") or dst == src):
+        return None  # a tag pushed as a tag is not a code change under review
     try:
         sha = git(["rev-parse", "--verify", "-q", f"{src}^{{commit}}"], cwd, timeout=10)
     except Exception:
